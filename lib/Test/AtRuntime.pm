@@ -12,14 +12,14 @@ Test::AtRuntime - Put tests in your code and run them as your program runs
 
   sub foo {
       # This test runs.
-      TEST: { pass('foo ran'); }
+      TEST { pass('foo ran'); }
   }
 
   no Test::AtRuntime;
 
   sub bar {
       # This test is not run.
-      TEST: { pass('bar ran') }
+      TEST { pass('bar ran') }
   }
 
   foo();
@@ -37,7 +37,7 @@ when it fails, normal "not ok" output will be seen.
 Like assertions, they can be turned on or off as needed.  Tests are put
 inside of a TEST block like so:
 
-    TEST: { like( $totally, qr/rad/ ) }
+    TEST { like( $totally, qr/rad/ ) }
 
 C<use Test::AtRuntime> runs these tests.  C<no Test::AtRuntime> means these
 tests will not be run.  In fact, they will be completely removed from the
@@ -52,11 +52,26 @@ If no logfile is given, tests will be outputed like normal.
 
 =head1 CAVEATS
 
-Due to bugs in Perl, 5.8.1 is required.  Hopefully I can work around
-those bugs in the future.
+Due to what appears to be a bug in Filter::Simple, this won't work as
+expected:
+
+    use Test::AtRuntime;
+
+    ...run tests...
 
 
-=head1 IDEAS
+    no Test::AtRuntime;
+
+    ...don't run tests...
+
+    use Test::AtRuntime;
+
+    ...run tests...  <--- BUG
+
+Once you stop running tests, they can't be made to run again.
+
+
+=head1 TODO
 
 =over 4
 
@@ -65,6 +80,17 @@ those bugs in the future.
 It'll probably be useful to suppress the 'ok' messages so only
 failures are seen.  Then again, "tail -f logfile | grep '^ok '" does a
 good job of that.  Also, Test::Builder doesn't support that yet.
+
+=item * honor environment variables
+
+Test::AtRuntime should honor the same NDEBUG and PERL_NDEBUG
+environment variables as Carp::Assert and possibly an additional one
+just for Test::AtRuntime.
+
+=item * stack trace on failure
+
+Failing test should be accompanied by a stack trace to help figure out
+what's going wrong.
 
 =back
 
@@ -76,7 +102,7 @@ Test::More, Carp::Assert, Carp::Assert::More, Test::Inline, Test::Class
 =cut
 
 
-$VERSION = 0.01;
+$VERSION = 0.02;
 
 use Filter::Simple;
 use File::Spec;
@@ -89,8 +115,23 @@ $TB->plan('no_plan');
 $TB->use_numbers(0);
 $TB->no_header(0);
 
-sub unimport {
+sub import {
     my($class, $logfile) = @_;
+    $Testing = $Not_Testing ? 0 : 1;
+#    print STDERR "import: NT $Not_Testing  T $Testing\n";
+    set_log($logfile);
+    $Not_Testing = 0;
+}
+
+sub not_testing {
+    my($class, $logfile) = @_;
+    $Not_Testing = 1;
+#    print STDERR "not_testing\n";
+    goto &import;
+}
+
+sub set_log {
+    my($logfile) = @_;
 
     if( defined $logfile ) {
         open(LOGFILE, ">>$logfile") || die $!;
@@ -104,18 +145,18 @@ sub unimport {
     }
 }
 
-sub import { }
-
 
 FILTER_ONLY(
     executable  => sub { 
-        s[ \bTEST : \s+ $RE{balanced}{-parens=>'{}'} ][]xg;
+        $Testing ? s[ \bTEST \s+ ($RE{balanced}{-parens=>'{}'}) ][$1]xg
+                 : s[ \bTEST \s+  $RE{balanced}{-parens=>'{}'}  ][]xg
     },
-#    all => sub { print };
+#    all => sub { print },
+#    qr/^\s*(?:use|no)\s+Test::AtRuntime\b/
 );
 
 no warnings 'redefine';
-(*import, *unimport) = (\&unimport, \&import);
+(*unimport, *import) = (\&not_testing, \&import);
 
 1;
 

@@ -10,13 +10,13 @@ use Test::AtRuntime 'logfile';
 use Test::More;
 
 sub foo {
-    TEST: {
+    TEST {
         pass('foo');
     }
 }
 
 sub bar {
-    TEST: {
+    TEST {
         pass('bar');
     }
 }

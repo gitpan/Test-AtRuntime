@@ -5,12 +5,11 @@
 # - Fill in your dependencies in PREREQ_PM
 # Alternatively, you can say the hell with this and use h2xs.
 
-require 5.008001;
 use ExtUtils::MakeMaker;
 
 $PACKAGE = 'Test::AtRuntime';
 ($PACKAGE_FILE = $PACKAGE) =~ s|::|/|g;
-$LAST_API_CHANGE = 0;
+$LAST_API_CHANGE = 0.02;
 
 eval "require $PACKAGE";
 

@@ -4,13 +4,13 @@ no Test::AtRuntime;
 use Test::More;
 
 sub foo {
-    TEST: {
+    TEST {
         fail('foo');
     }
 }
 
 sub bar {
-    TEST: {
+    TEST {
         fail('bar');
     }
 }
